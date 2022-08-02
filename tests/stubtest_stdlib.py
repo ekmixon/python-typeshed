@@ -43,12 +43,10 @@ def run_stubtest(typeshed_dir: Path) -> int:
         subprocess.run(cmd, check=True)
     except subprocess.CalledProcessError as e:
         print(
-            "\nNB: stubtest output depends on the Python version (and system) it is run with. "
-            "See README.md for more details.\n"
-            "NB: We only check positional-only arg accuracy for Python 3.10.\n"
-            "\nCommand run was: {}\n".format(" ".join(cmd)),
+            f'\nNB: stubtest output depends on the Python version (and system) it is run with. See README.md for more details.\nNB: We only check positional-only arg accuracy for Python 3.10.\n\nCommand run was: {" ".join(cmd)}\n',
             file=sys.stderr,
         )
+
         print("\n\n", file=sys.stderr)
         print(f'To fix "unused allowlist" errors, remove the corresponding entries from {allowlist_dir}', file=sys.stderr)
         return e.returncode

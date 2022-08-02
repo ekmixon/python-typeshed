@@ -46,9 +46,7 @@ def check_stdlib() -> None:
             if ext != ".pyi":
                 assert entry == "VERSIONS", f"Unexpected file in stdlib root: {entry}"
             assert name.isidentifier(), "Bad file name in stdlib"
-        else:
-            if entry == "@python2":
-                continue
+        elif entry != "@python2":
             assert_stubs_only(os.path.join("stdlib", entry))
     for entry in os.listdir("stdlib/@python2"):
         if os.path.isfile(os.path.join("stdlib/@python2", entry)):
@@ -69,9 +67,7 @@ def check_stubs() -> None:
                     assert entry in {"METADATA.toml", "README", "README.md", "README.rst"}, entry
                 else:
                     assert name.isidentifier(), f"Bad file name '{entry}' in stubs"
-            else:
-                if entry == "@tests":
-                    continue
+            elif entry != "@tests":
                 assert_stubs_only(os.path.join("stubs", distribution, entry))
 
 
@@ -134,20 +130,16 @@ def _find_stdlib_modules() -> set[str]:
 
 
 def _strip_dep_version(dependency: str) -> tuple[str, str, str]:
-    dep_version_pos = len(dependency)
-    for pos, c in enumerate(dependency):
-        if c in "=<>":
-            dep_version_pos = pos
-            break
+    dep_version_pos = next(
+        (pos for pos, c in enumerate(dependency) if c in "=<>"),
+        len(dependency),
+    )
+
     stripped = dependency[:dep_version_pos]
     rest = dependency[dep_version_pos:]
     if not rest:
         return stripped, "", ""
-    number_pos = 0
-    for pos, c in enumerate(rest):
-        if c not in "=<>":
-            number_pos = pos
-            break
+    number_pos = next((pos for pos, c in enumerate(rest) if c not in "=<>"), 0)
     relation = rest[:number_pos]
     version = rest[number_pos:]
     return stripped, relation, version

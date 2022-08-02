@@ -76,7 +76,11 @@ async def fetch_pypi_info(distribution: str, session: aiohttp.ClientSession) -> 
         j = await response.json()
         version = j["info"]["version"]
         # prefer wheels, since it's what most users will get / it's pretty easy to mess up MANIFEST
-        release_to_download = sorted(j["releases"][version], key=lambda x: bool(x["packagetype"] == "bdist_wheel"))[-1]
+        release_to_download = sorted(
+            j["releases"][version],
+            key=lambda x: x["packagetype"] == "bdist_wheel",
+        )[-1]
+
         date = datetime.datetime.fromisoformat(release_to_download["upload_time"])
         return PypiInfo(
             distribution=distribution,
@@ -138,7 +142,10 @@ async def package_contains_py_typed(release_to_download: dict[str, Any], session
 
 
 def _check_spec(updated_spec: str, version: packaging.version.Version) -> str:
-    assert version in packaging.specifiers.SpecifierSet("==" + updated_spec), f"{version} not in {updated_spec}"
+    assert version in packaging.specifiers.SpecifierSet(
+        f"=={updated_spec}"
+    ), f"{version} not in {updated_spec}"
+
     return updated_spec
 
 
@@ -173,7 +180,7 @@ async def determine_action(stub_path: Path, session: aiohttp.ClientSession) -> U
         return NoUpdate(stub_info.distribution, "no longer updated")
 
     pypi_info = await fetch_pypi_info(stub_info.distribution, session)
-    spec = packaging.specifiers.SpecifierSet("==" + stub_info.version_spec)
+    spec = packaging.specifiers.SpecifierSet(f"=={stub_info.version_spec}")
     if pypi_info.version in spec:
         return NoUpdate(stub_info.distribution, "up to date")
 
@@ -211,17 +218,13 @@ def get_origin_owner() -> str:
     output = subprocess.check_output(["git", "remote", "get-url", "origin"], text=True)
     match = re.search(r"(git@github.com:|https://github.com/)(?P<owner>[^/]+)/(?P<repo>[^/]+).git", output)
     assert match is not None
-    assert match.group("repo") == "typeshed"
-    return match.group("owner")
+    assert match["repo"] == "typeshed"
+    return match["owner"]
 
 
 async def create_or_update_pull_request(*, title: str, body: str, branch_name: str, session: aiohttp.ClientSession) -> None:
     secret = os.environ["GITHUB_TOKEN"]
-    if secret.startswith("ghp"):
-        auth = f"token {secret}"
-    else:
-        auth = f"Bearer {secret}"
-
+    auth = f"token {secret}" if secret.startswith("ghp") else f"Bearer {secret}"
     fork_owner = get_origin_owner()
 
     async with session.post(
@@ -282,13 +285,16 @@ async def suggest_typeshed_update(update: Update, session: aiohttp.ClientSession
             return
         subprocess.check_call(["git", "push", "origin", branch_name, "--force-with-lease"])
 
-    body = "\n".join(f"{k}: {v}" for k, v in update.links.items())
-    body += """
+    body = (
+        "\n".join(f"{k}: {v}" for k, v in update.links.items())
+        + """
 
 If stubtest fails for this PR:
 - Leave this PR open (as a reminder, and to prevent stubsabot from opening another PR)
 - Fix stubtest failures in another PR, then close this PR
 """
+    )
+
     await create_or_update_pull_request(title=title, body=body, branch_name=branch_name, session=session)
 
 
@@ -333,9 +339,11 @@ async def main() -> None:
     )
     args = parser.parse_args()
 
-    if args.action_level > ActionLevel.local:
-        if os.environ.get("GITHUB_TOKEN") is None:
-            raise ValueError("GITHUB_TOKEN environment variable must be set")
+    if (
+        args.action_level > ActionLevel.local
+        and os.environ.get("GITHUB_TOKEN") is None
+    ):
+        raise ValueError("GITHUB_TOKEN environment variable must be set")
 
     denylist = {"gdb"}  # gdb is not a pypi distribution
 

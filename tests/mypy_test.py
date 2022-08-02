@@ -147,7 +147,7 @@ def parse_versions(fname: StrPath) -> dict[str, tuple[MinVersion, MaxVersion]]:
             if line == "":
                 continue
             m = _VERSION_LINE_RE.match(line)
-            assert m, "invalid VERSIONS line: " + line
+            assert m, f"invalid VERSIONS line: {line}"
             mod: str = m.group(1)
             min_version = parse_version(m.group(2))
             max_version = parse_version(m.group(3)) if m.group(3) else (99, 99)
@@ -160,7 +160,7 @@ _VERSION_RE = re.compile(r"^([23])\.(\d+)$")
 
 def parse_version(v_str: str) -> tuple[int, int]:
     m = _VERSION_RE.match(v_str)
-    assert m, "invalid version: " + v_str
+    assert m, f"invalid version: {v_str}"
     return int(m.group(1)), int(m.group(2))
 
 
@@ -446,10 +446,7 @@ def test_the_test_scripts(code: int, args: TestConfig) -> TestResults:
     flags = get_mypy_flags(args, None, strict=True, test_suite_run=True)
     print(f"Testing the test suite ({num_test_files_to_test} files)...")
     print("Running mypy " + " ".join(flags))
-    if args.dry_run:
-        this_code = 0
-    else:
-        this_code = run_mypy_as_subprocess("tests", flags)
+    this_code = 0 if args.dry_run else run_mypy_as_subprocess("tests", flags)
     if not this_code:
         print_success_msg()
     code = max(code, this_code)
@@ -462,10 +459,7 @@ def test_scripts_directory(code: int, args: TestConfig) -> TestResults:
     flags = get_mypy_flags(args, None, strict=True, ignore_missing_imports=True)
     print(f"Testing the scripts directory ({num_test_files_to_test} files)...")
     print("Running mypy " + " ".join(flags))
-    if args.dry_run:
-        this_code = 0
-    else:
-        this_code = run_mypy_as_subprocess("scripts", flags)
+    this_code = 0 if args.dry_run else run_mypy_as_subprocess("scripts", flags)
     if not this_code:
         print_success_msg()
     code = max(code, this_code)
